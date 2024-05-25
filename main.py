@@ -5,16 +5,6 @@ from tables import *
 
 from dependency_solver import *
 
-# DatabaseGenerator
-# databaseConnectionContext
-# if column is fkey or pkey generate values yourself (IdType ?)
-# 
-
-# def generate(db_generator : DataGenerator):
-#     tables = db_generator.tables
-#     input()
-    # for t in tables:
-
 def start():
     db_generator = DataGenerator()
     tables = db_generator.tables
@@ -30,7 +20,6 @@ def start():
             index = int(index)
         except ValueError:
             index = 0
-
         # assert(index >= -1 and index <= 17)
         if index < -1 or index > 17:
             print("Not valid option")
