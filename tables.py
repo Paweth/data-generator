@@ -65,6 +65,7 @@ class Table:
                     data.append(val)
                 elif c.constraint == Constraint.FKEY:
                     if c.name == "superior_id":
+                        # TODO add support for self-reference fkeys
                         continue
                     max_id = gen_context.tables_max_id[c.referenced_table.__name__]
                     val = random.randint(1, max_id)
@@ -79,6 +80,7 @@ class Table:
                     existing_keys = gen_context.existing_key_pairs[self.name]
                     trial_number = 0
                     while(True):
+                        # TODO: case when for example 99999 of 100000 possible pairs were used would take long time to find "last remaining"
                         assert(trial_number < 10000)
                         new_pkey = (random.randint(1, lkey_max_id), random.randint(1, rkey_max_id))
                         if new_pkey not in existing_keys:
@@ -89,12 +91,11 @@ class Table:
                         data.append(v)
                     existing_keys.add(new_pkey)
             elif column_type == JobPositionNameData: # depends on existing Department
-                val = "Accountant"
+                val = c.ctype.random_value()
                 data.append(val)
             else:
                 val = c.ctype.random_value()
                 data.append(val) 
-            
             print(f"--> {c.name}: {val}")
         print()
         if self.is_join_table():

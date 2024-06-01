@@ -139,8 +139,9 @@ class JobPositionNameData:#depends on department
         "Public Relations": ["Brand Manager", "Public Relations Assistant", "Communications Coordinator"], 
         "Accounting": ["Bookkeeper", "Accounting Clerk", "Tax Accountant"]
     }
-    def random_value(self, department_name: str):
-        return random.choice(self.options[department_name]) 
+    def random_value(self, department_name: str = ""):
+        # TODO: change so it would pick department bound to fkey
+        return random.choice(self.options[random.choice(list(self.options.keys()))]) 
 # EMPLOYEES
     
 class FirstNameData:
@@ -188,10 +189,20 @@ class PriceData(IntData):
     def __init__(self):
         super().__init__(50, 3)#varchar(20)
 
-class ManufacturerData(StringData):
-    def __init__(self):
-        super().__init__(30, 3)#varchar(30)
-
+class ManufacturerData():
+    options = [
+    "Johnson & Johnson",
+    "Roche",
+    "Novartis",
+    "Merck & Co.",
+    "Sanofi",
+    "AstraZeneca",
+    "GlaxoSmithKline (GSK)",
+    "AbbVie",
+    "Bayer"
+]
+    def random_value(self):
+        return random.choice(self.options)
 # PRESCRIPTIONS_PRODUCTS
 
 class ProductAmountData(IntData):

@@ -68,7 +68,7 @@ class DataGenerator:
         res, _ = self.db_context.execute_query(query)
         res = [t[0] for t in res]
         if len(res) != len(self.tables):
-            #regenerate_tables(res) TODO
+            #regenerate_tables(res) TODO: to generate only tables that are missing?
             self.create_tables()
     
     def collect_data(self):
