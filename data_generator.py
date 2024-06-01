@@ -8,6 +8,7 @@ from io import *
 
 from database_context import * 
 from tables import *
+from database import *
 
 # def filter_permutations(permutations, pkey_pairs):
 #     new_tset = ()
@@ -36,43 +37,23 @@ class PermutationState:
 
 class DataGenerator:
     def __init__(self):
-        self.tables : List[Table] = []
-        self.tables.append(Baskets())
-        self.tables.append(Accounts())
-        self.tables.append(Addresses())
-        self.tables.append(Departments())
-        self.tables.append(JobPositions())
-        self.tables.append(Employees())
-        self.tables.append(Patients())
-        self.tables.append(Prescriptions())
-        self.tables.append(Orders())
-        self.tables.append(Pharmacies())
-        self.tables.append(Products())
-        self.tables.append(Prescriptions_Products())
-        self.tables.append(Storages())
-        self.tables.append(Storages_Products())
-        self.tables.append(Orders_Products())
-        self.tables.append(BasketElement())
-        self.tables.append(Pharmacies_Products())
-
         self.db_context : DatabaseContext = DatabaseContext()
         self.gen_context : GeneratorContext = GeneratorContext()
 
-        self.db_context.connect()
         self.check_database_integrity()
         self.collect_data()
 
     def check_database_integrity(self):
-        table_names = [f"'{t.name}'".upper() for t in self.tables]
+        table_names = [f"'{t.name}'".upper() for t in self.db_context.database.tables]
         query = f"SELECT TABLE_NAME FROM USER_TABLES WHERE TABLE_NAME IN ({", " .join(table_names)})"
         res, _ = self.db_context.execute_query(query)
         res = [t[0] for t in res]
-        if len(res) != len(self.tables):
+        if len(res) != len(self.db_context.database.tables):
             #regenerate_tables(res) TODO: to generate only tables that are missing?
             self.create_tables()
     
     def collect_data(self):
-        for t in self.tables:
+        for t in self.db_context.database.tables:
             if t.is_join_table():
                 self.gen_context.existing_key_pairs[t.name] = set()   
                 self.gen_context.tables_max_id[t.name] = set()
@@ -128,7 +109,7 @@ class DataGenerator:
         self.write_to_file(queries)
 
     def generate_data(self, amount):
-        for table in self.tables:
+        for table in self.db_context.database.tables:
             self.generate_table_data(amount, table)
 
     def read_sql_script(self, path):

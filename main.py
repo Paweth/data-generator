@@ -7,12 +7,11 @@ from dependency_solver import *
 
 def start():
     db_generator = DataGenerator()
-    tables = db_generator.tables
     while True:
         print("Choose table to generate data to (default: 0):")
         print("-1. Exit application")
         print("0. All tables")
-        for i, t in enumerate(db_generator.tables):
+        for i, t in enumerate(db_generator.db_context.database.tables):
             print(f"{i + 1}: {t.name}")
         print()
         index =  input()
@@ -35,7 +34,7 @@ def start():
             db_generator.generate_data(row_number)
         else: # specific table
             index = index - 1
-            db_generator.generate_table_data(row_number, tables[index])
+            db_generator.generate_table_data(row_number, db_generator.tables[index])
 
     print("Close application")
 

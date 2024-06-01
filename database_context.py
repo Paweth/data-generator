@@ -3,6 +3,8 @@ import json
 import os.path
 from getpass import getpass
 
+from database import *
+
 def provide_data(fields, data): # mutating data
     for f in fields:
         val = ""
@@ -27,6 +29,9 @@ class DatabaseContext:
         self.is_connected = False
         self.is_defined = False
         self.connection = 0
+        self.connect()
+        self.database : PharmacyDatabase = PharmacyDatabase()
+
 
     def connect(self):
         data = {}
@@ -53,6 +58,22 @@ class DatabaseContext:
         except oracledb.Error as error:
             print("Oracle Database Error:", error)
 
+    def get_query_description(self, query_string):
+        assert(self.is_connected)
+        print(f"QUERY: {query_string}")
+        with self.connection.cursor() as cursor:
+            try:
+                cursor.execute(query_string)
+                if cursor.rowcount == -1:
+                    print("Error fetching data:", cursor.getbatcherrors())
+            except oracledb.DatabaseError as e:
+                error, = e.args
+                if error.code == 942:
+                    print(f"Table does not exist")
+                else:
+                    print(f"Error: {error.message}")
+            return (cursor.fetchall(), cursor.rowcount, cursor.description)
+        
     def execute_query(self, query_string):
         assert(self.is_connected)
         print(f"QUERY: {query_string}")
