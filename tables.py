@@ -19,10 +19,6 @@ class ColumnDefinition:
             assert referenced_table is not None
             assert issubclass(referenced_table, Table)
             assert type(ctype) == IdData
-        if constraint == Constraint.COMPOSITE_PKEY:
-            assert(len(name) > 1)
-            if referenced_table is not None:
-                assert(len(name) == len(referenced_table))
         self.name = name
         self.ctype = ctype
         self.constraint = constraint
@@ -36,72 +32,88 @@ class Table:
         self.name = type(self).__name__
     def __str__(self):
         text = f"{type(self).__name__}:\n"
-        for c in self.columns:
-            text += f" -> {c.name}: {c.ctype}\n"
+        for column in self.columns:
+            text += f" -> {column.name}: {column.ctype}\n"
         return text
     
     def is_join_table(self):
-        for c in self.columns:
-            if c.constraint == Constraint.COMPOSITE_PKEY and c.referenced_table is not None:
-                return True
-        return False
+        counter = 0
+        for column in self.columns:
+            if column.constraint == Constraint.COMPOSITE_PKEY and column.referenced_table is not None:
+                counter += 1
+        if counter == 1:
+            raise Exception("Table with only one composite pkey")
+        return True if counter > 0 else False
     
     def get_pkeys(self) -> ColumnDefinition:
-        for c in self.columns:
-            if c.constraint == Constraint.COMPOSITE_PKEY or c.constraint == Constraint.PKEY:
-                pkey = c
-                break
-        return pkey
+        pkey_columns = []
+        for column in self.columns:
+            if column.constraint == Constraint.COMPOSITE_PKEY or column.constraint == Constraint.PKEY:
+                pkey_columns.append(column)
+        return pkey_columns
         
     def generate_row(self, gen_context : GeneratorContext):
-        data = []
+        data = [0 for _ in range(len(self.columns))]
         max_id = 0
-        for c in self.columns:
+        is_join_table = False
+        index_composite_pkey_columns = {}
+        for i, column in enumerate(self.columns):
             val = 0            
-            column_type = type(c.ctype)
+            column_type = type(column.ctype)
             if column_type == IdData:
-                if c.constraint == Constraint.PKEY:
+                if column.constraint == Constraint.PKEY:
                     val = gen_context.tables_max_id[self.name] + 1
-                    data.append(val)
-                elif c.constraint == Constraint.FKEY:
-                    if c.name == "superior_id":
+                    data[i] = val
+                elif column.constraint == Constraint.FKEY:
+                    if column.name == "superior_id":
                         # TODO add support for self-reference fkeys
                         continue
-                    max_id = gen_context.tables_max_id[c.referenced_table.__name__]
+                    max_id = gen_context.tables_max_id[column.referenced_table.__name__]
                     val = random.randint(1, max_id)
-                    data.append(val)
-                elif self.is_join_table(): # COMPOSITE PKEY and referenced_table
-                    val = []
-                    lkey_max_id = gen_context.tables_max_id[c.referenced_table[0].__name__]
-                    rkey_max_id = gen_context.tables_max_id[c.referenced_table[1].__name__]
+                    data[i] = val
+                elif self.is_join_table(): # self.is_join_table(): COMPOSITE PKEY and referenced_table
+                    is_join_table = True # postpone evaluation after other members
+                    index_composite_pkey_columns[i] = column
 
-                    max_id = (lkey_max_id, rkey_max_id)
-
-                    existing_keys = gen_context.existing_key_pairs[self.name]
-                    trial_number = 0
-                    while(True):
-                        # TODO: case when for example 99999 of 100000 possible pairs were used would take long time to find "last remaining"
-                        assert(trial_number < 10000)
-                        new_pkey = (random.randint(1, lkey_max_id), random.randint(1, rkey_max_id))
-                        if new_pkey not in existing_keys:
-                            break
-                        trial_number += 1
-                    for v in new_pkey:
-                        val.append(v)
-                        data.append(v)
-                    existing_keys.add(new_pkey)
             elif column_type == JobPositionNameData: # depends on existing Department
-                val = c.ctype.random_value()
-                data.append(val)
+                val = column.ctype.random_value()
+                data[i] = val
             else:
-                val = c.ctype.random_value()
-                data.append(val) 
-            print(f"--> {c.name}: {val}")
-        print()
-        if self.is_join_table():
+                val = column.ctype.random_value()
+                data[i] = val
+            
+        if is_join_table:
+            val = []
+            
+            dict_iter = iter(index_composite_pkey_columns.items())
+            l_index, lkey_column = next(dict_iter)
+            r_index, rkey_column = next(dict_iter)
+            lkey_max_id = gen_context.tables_max_id[lkey_column.referenced_table.__name__]
+            rkey_max_id = gen_context.tables_max_id[rkey_column.referenced_table.__name__]
+
+            max_id = (lkey_max_id, rkey_max_id)
+
+            existing_keys = gen_context.existing_key_pairs[self.name]
+            trial_number = 0
+            while(True):
+                # TODO: case when for example 99999 of 100000 possible pairs were used would take long time to find "last remaining"
+                # TODO: change so it would take into account pairs that were generated (store permutations)
+                assert(trial_number < 10000)
+                new_pkey = (random.randint(1, lkey_max_id), random.randint(1, rkey_max_id))
+                if new_pkey not in existing_keys:
+                    break
+                trial_number += 1
+            for i, (pkey_index, _) in enumerate(index_composite_pkey_columns.items()):
+                data[pkey_index] = new_pkey[i]
+                
+            # existing_keys.add(new_pkey)
+
             gen_context.tables_max_id[self.name] = (max_id[0], max_id[1]) 
         else:
             gen_context.tables_max_id[self.name] += 1
+        for i, column in enumerate(self.columns):
+            print(f"--> {column.name}: {data[i]}")
+        print()
         return tuple(data)
 
 
@@ -208,7 +220,8 @@ class Prescriptions_Products(Table):
     def __init__(self):
         super().__init__()
         self.columns = []
-        self.columns.append(ColumnDefinition(['prescription_id', 'product_id'], IdData(), Constraint.COMPOSITE_PKEY, [Prescriptions, Products]))
+        self.columns.append(ColumnDefinition('prescription_id', IdData(), Constraint.COMPOSITE_PKEY, Prescriptions))
+        self.columns.append(ColumnDefinition('product_id', IdData(), Constraint.COMPOSITE_PKEY, Products))
         self.columns.append(ColumnDefinition('product_amount', ProductAmountData()))
 
 class Storages(Table):
@@ -222,14 +235,16 @@ class Storages_Products(Table):
     def __init__(self):
         super().__init__()
         self.columns = []
-        self.columns.append(ColumnDefinition(['storage_id','product_id'], IdData(), Constraint.COMPOSITE_PKEY, [Storages, Products]))
+        self.columns.append(ColumnDefinition('storage_id', IdData(), Constraint.COMPOSITE_PKEY, Storages))
+        self.columns.append(ColumnDefinition('product_id', IdData(), Constraint.COMPOSITE_PKEY, Products))
         self.columns.append(ColumnDefinition('product_amount', ProductAmountData()))
 
 class Orders_Products(Table):
     def __init__(self):
         super().__init__()
         self.columns = [
-            ColumnDefinition(['order_id','product_id'], IdData(), Constraint.COMPOSITE_PKEY, [Orders, Products]),
+            ColumnDefinition('order_id', IdData(), Constraint.COMPOSITE_PKEY, Orders),
+            ColumnDefinition('product_id', IdData(), Constraint.COMPOSITE_PKEY, Products),
             ColumnDefinition('product_amount', ProductAmountData())
             ]
 
@@ -246,6 +261,7 @@ class Pharmacies_Products(Table):
     def __init__(self):
         super().__init__()
         self.columns = []
-        self.columns.append(ColumnDefinition(['pharmacy_id', 'product_id'], IdData(), Constraint.COMPOSITE_PKEY, [Pharmacies, Products]))
+        self.columns.append(ColumnDefinition('pharmacy_id', IdData(), Constraint.COMPOSITE_PKEY, Pharmacies))
+        self.columns.append(ColumnDefinition('product_id', IdData(), Constraint.COMPOSITE_PKEY, Products))
         self.columns.append(ColumnDefinition('product_amount', ProductAmountData()))
 

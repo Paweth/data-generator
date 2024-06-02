@@ -34,7 +34,8 @@ def start():
             db_generator.generate_data(row_number)
         else: # specific table
             index = index - 1
-            db_generator.generate_table_data(row_number, db_generator.tables[index])
+            table = db_generator.db_context.database.tables[index]
+            db_generator.generate_table_data(row_number, table)
 
     print("Close application")
 

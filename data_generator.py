@@ -58,15 +58,15 @@ class DataGenerator:
                 self.gen_context.existing_key_pairs[t.name] = set()   
                 self.gen_context.tables_max_id[t.name] = set()
 
-                key : ColumnDefinition = t.get_pkeys()
-                q1 = f"select max(id) from {key.referenced_table[0].__name__}"
+                keys : ColumnDefinition = t.get_pkeys()
+                q1 = f"select max(id) from {keys[0].referenced_table.__name__}"
                 r1, _ = self.db_context.execute_query(q1)
 
-                q2 = f"select max(id) from {key.referenced_table[1].__name__}"
+                q2 = f"select max(id) from {keys[1].referenced_table.__name__}"
                 r2, _ = self.db_context.execute_query(q2)
 
                 if len(r1) > 0 and len(r2) > 0:
-                    query_string = f"select {key.name[0]}, {key.name[1]} from {t.name}"
+                    query_string = f"select {keys[0].name}, {keys[1].name} from {t.name}"
                     existing_keys, _ = self.db_context.execute_query(query_string)
                     self.gen_context.existing_key_pairs[t.name].update(set(existing_keys)) 
                     self.gen_context.tables_max_id[t.name].add((r1[0][0], r2[0][0]))
