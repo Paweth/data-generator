@@ -2,3 +2,4 @@ todo.txt
 __pycache__
 connection.json
 generated_sql
+xml

@@ -2,6 +2,11 @@
 ## Description
 Console application that generates random rows to database of predefined schema. After it's run it asks user to select table to generate data to. There are 18 options - one for each table and one that allows to generate data to all tables. After that program asks to provide number of rows to generate to specified earlier tables. Then program generates data to these tables and additionally writes sql select statements to 'inserts.sql' file in ./generated_sql folder (if it doesn't exist, it is automatically created)
 
+## Dependencies
+It was run using following libraries:
+- lxml 5.2.2
+- oracledb 2.1.1
+
 ## How to run
 To run program you can simply invoke `python ./main.py` in terminal while having it opened in root folder of project. It's good to have connection.json file consisting of connection data with filled following fields:
 ```
